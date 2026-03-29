@@ -4,6 +4,7 @@ import yaml
 
 from fastapi import FastAPI, APIRouter
 from pathlib import Path
+from routers import audio_router
 
 # --- Load logging config ---
 LOG_CONFIG_PATH = Path(__file__).parent / "logger_config.yml"
@@ -38,3 +39,5 @@ async def isalive():
 @router.get("/v1/hello")
 async def hello():
   return {"message": "Hello world"}
+
+app.include_router(audio_router)
