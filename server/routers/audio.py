@@ -12,11 +12,10 @@ router = APIRouter(
 
 @router.post(
     "/v1/audio/post",
-    response_model=dict,
     summary="Robot uploads an audio file of user speaking."
 )
 async def post_audio(
     service: Annotated[AudioService, Depends(AudioService)],
     audio_file: UploadFile = File(...)
 ):
-    return await service.post_audio(audio_file)
+    return await service.process_audio(audio_file)

@@ -1,6 +1,6 @@
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
-from config import SYSTEM_PROMPT
+from .config import SYSTEM_PROMPT
 
 class ResponseGenerator:
     def __init__(self, system_prompt=SYSTEM_PROMPT):

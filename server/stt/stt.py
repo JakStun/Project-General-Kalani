@@ -15,11 +15,14 @@ class SpeechToText:
 
         start_time = time.time()
         segments, info = self.model.transcribe(audio)
+
+        text = " ".join([segment.text for segment in segments])
+
         end_time = time.time()
 
         self.logger.info(f"Transcription completed in {end_time - start_time:.2f} seconds")
 
-        return segments
+        return text.strip()
     
 if __name__ == "__main__":
     stt = SpeechToText()
