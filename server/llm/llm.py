@@ -22,10 +22,8 @@ class ResponseGenerator:
 
         outputs = self.model.generate(
             **inputs,
-            max_new_tokens=100,
-            temperature=0.1,
-            repetition_penalty=1.2,
-            do_sample=True,
+            max_new_tokens=50,
+            do_sample=False,
             pad_token_id=self.tokenizer.eos_token_id,
             eos_token_id=self.tokenizer.eos_token_id
         )
