@@ -1,9 +1,10 @@
 from fastapi.responses import FileResponse
 import time
 import logging
+import asyncio
 
 from stt import SpeechToText
-from tts_temp import TextToSpeech
+from tts import TextToSpeech
 from llm import ResponseGenerator
 
 from .config import TEMP_DIR
@@ -64,17 +65,17 @@ class AudioService:
     # --------------------- Helper Funcs ---------------------
 
     async def _process_audio(self, file_path):
-        user_text = self.stt.transcribe_audio(file_path)
+        user_text = await asyncio.to_thread(self.stt.transcribe_audio, file_path)
 
         return user_text
     
     async def _generate_response(self, user_text):
-        response_text = self.llm.generate_response(user_text)
+        response_text = await asyncio.to_thread(self.llm.generate_response, user_text)
 
         return response_text
     
     async def _create_audio_response(self, response_text, audio_file):
         tts_path = self.temp_dir / f"response_{audio_file.filename}"
-        self.tts.create_speech(response_text, tts_path)
+        await asyncio.to_thread(self.tts.create_speech, response_text, tts_path)
 
         return tts_path

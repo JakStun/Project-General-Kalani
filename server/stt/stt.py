@@ -3,9 +3,14 @@ from typing import Iterable
 from rich.segment import Segment
 from faster_whisper import WhisperModel
 from logging import getLogger
+import torch
 
 class SpeechToText:
-    def __init__(self, model_size="small", device="cuda", compute_type="float16"):
+    def __init__(self, model_size="tiny", device="auto", compute_type="float16"):
+        if device == "auto":
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+            compute_type = "float16" if device == "cuda" else "int8"
+        
         self.model = WhisperModel(model_size, device=device, compute_type=compute_type)
 
         self.logger = getLogger("main")
