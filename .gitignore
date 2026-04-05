@@ -139,6 +139,8 @@ celerybeat.pid
 .envrc
 .venv
 tts-env
+venv_py311
+venv_py312
 env/
 venv/
 ENV/
