@@ -10,3 +10,6 @@ User → Microphone → Raspberry Pi → Server → Response → Speaker
 - INMP441 module I2S microfone
 - GY-VL53L0X I2C Laser senzor
 - Waveshare MG90S Micro Servo (2x)
+
+## Updates (Pics)
+- In updates folder
