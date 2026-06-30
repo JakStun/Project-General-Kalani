@@ -146,6 +146,9 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+temp/
+models/voice_samples
+server/model
 
 # Spyder project settings
 .spyderproject
