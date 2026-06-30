@@ -25,7 +25,8 @@ class SpeechToText:
 
         end_time = time.time()
 
-        self.logger.info(f"Transcription completed in {end_time - start_time:.2f} seconds")
+        # self.logger.info(f"Transcription completed in {end_time - start_time:.2f} seconds")
+        self.logger.info(f"Transcribed text: {text}")
 
         return text.strip()
     

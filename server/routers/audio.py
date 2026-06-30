@@ -1,5 +1,5 @@
-from fastapi import APIRouter, UploadFile, File, Depends
-from typing import List, Optional, Annotated
+from fastapi import APIRouter, UploadFile, File, Depends, Header
+from typing import Annotated
 
 from dependencies import verify_robot_id
 from services import AudioService
@@ -10,12 +10,14 @@ router = APIRouter(
     dependencies=[Depends(verify_robot_id)]
 )
 
+audio_service = AudioService()
+
 @router.post(
     "/v1/audio/post",
     summary="Robot uploads an audio file of user speaking and in return gets an audio response."
 )
 async def post_audio(
-    service: Annotated[AudioService, Depends(AudioService)],
+    x_robot_id:  Annotated[str, Header()],
     audio_file: UploadFile = File(...)
 ):
-    return await service.process_audio(audio_file)
+    return await audio_service.process_audio(x_robot_id, audio_file)

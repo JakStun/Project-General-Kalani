@@ -1,13 +1,20 @@
-from fastapi.responses import FileResponse
 import time
 import logging
 import asyncio
+import torch
+
+from fastapi import UploadFile
+from fastapi.responses import FileResponse
 
 from stt import SpeechToText
-from tts import TextToSpeech
+from tts import PiperService
 from llm import ResponseGenerator
 
 from .config import TEMP_DIR
+
+torch.backends.cuda.enable_flash_sdp(True)
+torch.backends.cuda.enable_mem_efficient_sdp(True)
+torch.backends.cuda.enable_math_sdp(False)
 
 class AudioService:
     def __init__(self):
@@ -15,11 +22,11 @@ class AudioService:
         self.temp_dir.mkdir(exist_ok=True)
 
         self.stt = SpeechToText()
-        self.tts = TextToSpeech()
+        self.tts = PiperService()
         self.llm = ResponseGenerator()
         self.logger = logging.getLogger("main")
 
-    async def process_audio(self, audio_file):
+    async def process_audio(self, robot_id: str, audio_file: UploadFile):
         '''
         Upload the .wav audio so that Lucrehulk can process it.
         '''
@@ -45,18 +52,14 @@ class AudioService:
 
             # III. Create audio response:
             start_tts = time.time()
-            tts_path = await self._create_audio_response(response_text, audio_file)
+            await self._create_audio_response(robot_id, response_text)
             tts_time = time.time() - start_tts
             self.logger.info(f"TTS took {tts_time:.2f}s")
 
             total_time = time.time() - start_total
             self.logger.info(f"Total processing took {total_time:.2f}s")
 
-            return {
-                "transcription": user_text,
-                "response_text": response_text,
-                "response_audio": FileResponse(tts_path, media_type="audio/wav", filename=tts_path.name)
-            }
+            return FileResponse(f'temp/{robot_id}.wav', media_type="audio/wav", filename=f'{robot_id}.wav')
 
         except Exception as e:
             return {"message": f"Error occurred while processing audio: {str(e)}"}
@@ -69,13 +72,17 @@ class AudioService:
 
         return user_text
     
-    async def _generate_response(self, user_text):
+    async def _generate_response(self, user_text: str):
         response_text = await asyncio.to_thread(self.llm.generate_response, user_text)
 
         return response_text
     
-    async def _create_audio_response(self, response_text, audio_file):
-        tts_path = self.temp_dir / f"response_{audio_file.filename}"
-        await asyncio.to_thread(self.tts.create_speech, response_text, tts_path)
+    async def _create_audio_response(self, robot_id: str, response_text: str):
+        output_file = (
+            self.temp_dir / f"{robot_id}.wav"
+        )
 
-        return tts_path
+        await self.tts.generate_async(
+            response_text,
+            str(output_file)
+        )

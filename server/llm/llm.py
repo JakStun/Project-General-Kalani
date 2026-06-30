@@ -1,45 +1,147 @@
 import torch
+import time
+import re
+
 from transformers import AutoTokenizer, AutoModelForCausalLM
+from logging import getLogger
+
 from .config import SYSTEM_PROMPT
 
 class ResponseGenerator:
     def __init__(self, system_prompt=SYSTEM_PROMPT):
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        dtype = torch.float16 if device == "cuda" else torch.float32
-        
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
-        )
-
-        self.model = AutoModelForCausalLM.from_pretrained(
-            "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
-            torch_dtype=dtype
-        ).to(device)
-
         self.system_prompt = system_prompt
+        
+        self.tokenizer = None
+
+        self.model = None
+
+        self.logger = getLogger("main")
+
+        self._ensure_loaded()
+
+    def _ensure_loaded(self):
+        if self.model is None:
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+            dtype = torch.bfloat16 if torch.cuda.is_available() else torch.float32
+
+            MODEL_NAME = "Qwen/Qwen2.5-1.5B-Instruct"
+
+            self.tokenizer = AutoTokenizer.from_pretrained(
+                MODEL_NAME
+            )
+
+            self.model = AutoModelForCausalLM.from_pretrained(
+                MODEL_NAME,
+                dtype=dtype,
+            ).to(device)
+
+            self.logger.info(f"Device: {self.model.device}")
+
+            self.logger.info(f"CUDA available: {torch.cuda.is_available()}")
+
+            self.logger.info(
+                f"Model loaded: {self.model.__class__.__name__}"
+            )
+
+            self.logger.info(
+                f"Model dtype: {next(self.model.parameters()).dtype}"
+            )
+
+            self.logger.info(
+                f"GPU: {torch.cuda.get_device_name(0)}"
+            )
+
+            self.logger.info(
+                f"GPU memory allocated: "
+                f"{torch.cuda.memory_allocated() / 1024**3:.2f} GB"
+            )
+
+            self.logger.info(
+                f"GPU memory reserved: "
+                f"{torch.cuda.memory_reserved() / 1024**3:.2f} GB"
+            )
+
 
     def generate_response(self, user_input) -> str:
-        prompt = f"<|system|>\n{self.system_prompt}\n<|user|>\n{user_input}\n<|assistant|>\n"
+        self.logger.info(
+            f"GPU memory allocated: "
+            f"{torch.cuda.memory_allocated() / 1024**3:.2f} GB"
+        )
 
-        inputs = self.tokenizer(prompt, return_tensors="pt").to(self.model.device)
+        self.logger.info(
+            f"GPU memory reserved: "
+            f"{torch.cuda.memory_reserved() / 1024**3:.2f} GB"
+        )
+        
+        messages = [
+            {"role": "system", "content": self.system_prompt},
+            {"role": "user", "content": user_input},
+        ]
+
+        prompt = self.tokenizer.apply_chat_template(
+            messages,
+            tokenize=False,
+            add_generation_prompt=True,
+        )
+
+        inputs = self.tokenizer(
+            prompt,
+            return_tensors="pt"
+        ).to(self.model.device)
+
+        # inputs = self.tokenizer(prompt, return_tensors="pt").to(self.model.device)
+
+        start = time.time()
 
         outputs = self.model.generate(
             **inputs,
-            max_new_tokens=40, # short answer
+            max_new_tokens=20,
             do_sample=False,
-            temperature=0, # less emotion, more robot like
-            top_p=1.0, # what does this mean?
             pad_token_id=self.tokenizer.eos_token_id,
-            eos_token_id=self.tokenizer.eos_token_id
+            eos_token_id=self.tokenizer.eos_token_id,
         )
 
-        response = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+        elapsed = time.time() - start
 
-        response = response.split("<|assistant|>")[-1]
+        generated_tokens = outputs.shape[1] - inputs["input_ids"].shape[1]
+
+        self.logger.info(
+            f"Speed: {generated_tokens / elapsed:.2f} tok/s"
+        )
+
+        self.logger.info(
+            f"Generated {generated_tokens} tokens"
+        )
+
+        self.logger.info(
+            f"Generation took {time.time() - start:.2f}s"
+        )
+
+        input_length = inputs["input_ids"].shape[1]
+
+        response = self.tokenizer.decode(
+            outputs[0][input_length:],
+            skip_special_tokens=True
+        )
+
+        self.logger.info(
+            f"RAW RESPONSE: {repr(response)}"
+        )
+
+        self.logger.info(
+            f"Input tokens: {inputs['input_ids'].shape[1]}"
+        )
+
+        generated_tokens = outputs.shape[1] - inputs["input_ids"].shape[1]
+
+        self.logger.info(
+            f"Generated tokens: {generated_tokens}"
+        )
 
         # HARD STOPS
-        for stop_token in ["<|user|>", "User:", "Assistant:", "<|system|>"]:
-            response = response.split(stop_token)[0]
+        for prefix in ["<|user|>", "User:", "Assistant:", "<|system|>", "Bot:"]:
+            if response.startswith(prefix):
+                response = response[len(prefix):].strip()
 
         return self.enforce_character_constraints(response)
     
@@ -61,21 +163,23 @@ class ResponseGenerator:
             text = text.replace(phrase, "")
         
         # Limit to max 2 sentences and 40 words TODO: Need to come up with something more efficient
-        sentences = text.split(".")
-        if len(sentences) > 2:
-            text = ".".join(sentences[:2]) + "."
-        
-        words = text.split()
-        if len(words) > 40:
-            words = words[:40]
-            text = " ".join(words)
-            if not text.endswith("."):
-                text += "."
         
         # Ensure proper ending
         text = text.strip()
         if text and not text.endswith("."):
             text += "."
+
+        sentences = re.split(r'(?<=[.!?])\s+', text)
+
+        if len(sentences) > 2:
+            text = " ".join(sentences[:2])
+
+        words = text.split()
+
+        if len(words) > 25:
+            text = " ".join(words[:25])
+
+        self.logger.info(f"Final response after enforcing constraints: {text}")
         
         return text
     

@@ -6,6 +6,9 @@ from fastapi import FastAPI, APIRouter
 from pathlib import Path
 from routers import audio_router
 
+import torch
+print(torch.backends.cudnn.version())
+
 # --- Load logging config ---
 LOG_CONFIG_PATH = Path(__file__).parent / "logger_config.yml"
 

@@ -5,7 +5,7 @@ import time
 from qwen_tts import Qwen3TTSModel
 from logging import getLogger
 
-from .config import REF_AUDIO_PATH, REF_TEXT, VERSION
+from ..config import REF_AUDIO_PATH, REF_TEXT, VERSION
 
 class TextToSpeech:
     def __init__(self, ref_audio_path: str = REF_AUDIO_PATH, ref_text: str = REF_TEXT) -> None:
