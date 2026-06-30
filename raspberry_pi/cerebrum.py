@@ -9,7 +9,7 @@ from events import Event
 from leds import LEDsControl
 from microphone import MicrophoneControl
 from radar import RadarControl
-from servos import ServoControl
+from servos import ServoControlPCA9685
 
 from pathlib import Path
 
@@ -39,16 +39,13 @@ class Cerebrum:
 
         self.radar = RadarControl(self.event_queue)
         self.leds = LEDsControl()
-        # self.servos = ServoControl()
+        self.servos = ServoControlPCA9685()
 
         self.awake = False
 
 
     async def startup(self) -> None:
-        # await self.radar.startup()
-
-        # move head back to init position:
-        # await self.servos.move(-60)
+        self.servos.calibrate()
 
         asyncio.create_task(
             self.radar.run()
@@ -86,7 +83,7 @@ class Cerebrum:
 
         await asyncio.gather(
             self.leds.wake_animation(),
-            # self.servos.wake_animation()
+            self.servos.wake_animation()
         )
 
         await self.leds.start_active()
@@ -104,7 +101,7 @@ class Cerebrum:
 
         await asyncio.gather(
             self.leds.sleep_animation(),
-            # self.servos.sleep_animation(),
+            self.servos.sleep_animation(),
         )
 
 

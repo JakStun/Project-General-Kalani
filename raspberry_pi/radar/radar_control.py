@@ -2,8 +2,8 @@ from events import Event
 from aio_ld2410 import LD2410
 from logging import getLogger
 
-MOVING_CONFIG = [80, 80, 80]
-STATIC_CONFIG = [80, 80, 80]
+MOVING_CONFIG = [90, 90, 90]
+STATIC_CONFIG = [90, 90, 90]
 
 class RadarControl:
     def __init__(self, event_queue) -> None:
@@ -50,7 +50,9 @@ class RadarControl:
     async def _handle_report(self, report) -> None:
         basic = report.basic
 
-        currently_detected = bool(basic.target_status)
+        currently_detected = bool(
+            basic.target_status != 0 and 30 <= basic.moving_distance <= 55
+        )
 
         if currently_detected and not self.detected:
             self.distance = basic.detection_distance
