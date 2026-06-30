@@ -10,6 +10,8 @@ User → Microphone → Raspberry Pi → Server → Response → Speaker
 - Adafruit I2S MEMS microphone breakout - SPH0645LM4H
 - LD2410C Human Presence Sensor HLK-2410C
 - Waveshare MG90S Micro Servo (2x)
+- PCA9685 Servo Controller
+- External battery capable powering servos
 
 ## Updates (Pics)
 - In updates folder
