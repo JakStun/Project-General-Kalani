@@ -9,7 +9,7 @@ import math
 factory = PiGPIOFactory()
 
 right_servo = AngularServo(
-    18, 
+    13, 
     min_pulse_width=0.0006, 
     max_pulse_width=0.0023,
     min_angle=-90,
@@ -19,7 +19,7 @@ right_servo = AngularServo(
 )
 
 left_servo = AngularServo(
-    19,
+    12,
     min_pulse_width=0.0006, 
     max_pulse_width=0.0023,
     min_angle=-90,
