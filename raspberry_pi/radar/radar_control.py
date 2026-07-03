@@ -32,18 +32,20 @@ class RadarControl:
     async def _configure(self) -> None:
         self.logger.info("[LD2410] Sensor activated ... configuring ...")
 
-        await self._device.set_parameters(
-            moving_max_distance_gate=2,
-            static_max_distance_gate=2,
-            presence_timeout=5,
-        )
+        async with self._device.configure():
 
-        for i in range(len(MOVING_CONFIG)):
-            await self._device.set_gate_sensitivity(
-                distance_gate=i,
-                moving_threshold=MOVING_CONFIG[i],
-                static_threshold=STATIC_CONFIG[i],
+            await self._device.set_parameters(
+                moving_max_distance_gate=2,
+                static_max_distance_gate=2,
+                presence_timeout=15,
             )
+
+            for i in range(len(MOVING_CONFIG)):
+                await self._device.set_gate_sensitivity(
+                    distance_gate=i,
+                    moving_threshold=MOVING_CONFIG[i],
+                    static_threshold=STATIC_CONFIG[i],
+                )
 
         self.logger.info("[LD2410] Configuration DONE")
 
@@ -83,4 +85,27 @@ class RadarControl:
             )
 
 if __name__ == "__main__":
-    pass
+    import asyncio 
+
+    async def main():
+        event_queue = asyncio.Queue()
+        radar = RadarControl(event_queue)
+
+        asyncio.create_task(
+            radar.run()
+        )
+
+        while True:
+            event, payload = await event_queue.get()
+
+            # match event:
+            #     case Event.RADAR_DETECTED:
+            #         await self.wake_up()
+
+            #     case Event.RADAR_LOST:
+            #         await self.sleep()
+
+            event_queue.task_done()
+
+
+    asyncio.run(main())

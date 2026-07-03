@@ -3,7 +3,7 @@ import time
 import random
 
 LED_COUNT = 7
-LED_PIN = 18
+LED_PIN = 10
 
 base_color = (255, 60, 0)
 
@@ -52,7 +52,7 @@ def damaged_flicker(strip, base_color):
 
         strip.show()
 
-        time.sleep(random.uniform(0.005, 0.03))
+        time.sleep(random.uniform(0.8, 0.05))
 
 
     # Now stabilizing:
@@ -82,7 +82,7 @@ for _ in range(8):
             strip.setPixelColor(i, Color(0, 0, 0))
 
     strip.show()
-    time.sleep(random.uniform(0.05, 0.15))
+    time.sleep(random.uniform(0.15, 0.05))
 
 # Gradual wake-up
 for brightness in range(20, 180, 20):
@@ -115,10 +115,10 @@ fill(255, 60, 0)
 
 try:
     while True:
-        if random.random() < 0.03:
+        if random.random() < 0.3:
             damaged_flicker(strip, base_color)
 
-        time.sleep(0.05)
+        time.sleep(0.5)
 
 except KeyboardInterrupt:
     print("Shutting down")

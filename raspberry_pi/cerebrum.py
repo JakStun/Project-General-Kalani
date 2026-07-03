@@ -45,7 +45,7 @@ class Cerebrum:
 
 
     async def startup(self) -> None:
-        self.servos.calibrate()
+        await self.servos.calibrate()
 
         asyncio.create_task(
             self.radar.run()

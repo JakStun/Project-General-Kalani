@@ -22,14 +22,14 @@ class ServoControlPCA9685:
         
         #TODO: Calibrating pulse for SG90 servos, needs further testing 
         self.kit.servo[self.RIGHT_CHANNEL].set_pulse_width_range(
-            600, 
-            2300
+            500, 
+            2500
         ) 
         
         
         self.kit.servo[self.LEFT_CHANNEL].set_pulse_width_range(
-            600,
-            2300
+            1000,
+            2000
         ) 
         
         self.current_angle = 0 
@@ -42,9 +42,9 @@ class ServoControlPCA9685:
         
         await asyncio.sleep(1) 
         
-        if last > -59: 
+        if last > -29: 
             try: 
-                await self.move(-60) 
+                await self.move(-30) 
                 self.logger.info("[SERVO] Calibrating SLUMBER POSITION successful") 
             except Exception: 
                 self.logger.exception("[SERVO] Failed to calibrate into SLUMBER POSITION") 
@@ -131,12 +131,15 @@ if __name__ == "__main__":
         # await servo_control.wake_animation()
         # await asyncio.sleep(1)
         # await servo_control.sleep_animation()
+        # await servo_control.move(target=0)
+
+        # time.sleep(10)
 
         while True:
-            await servo_control.move(target=40)
+            await servo_control.move(target=5, steps=30)
             time.sleep(2)
 
-            await servo_control.move(target=-40)
+            await servo_control.move(target=-30, steps=100, duration=3)
             time.sleep(2)
 
     asyncio.run(main())

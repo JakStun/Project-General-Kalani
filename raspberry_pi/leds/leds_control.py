@@ -7,7 +7,7 @@ from logging import getLogger
 from .led_state import LEDState
 
 LED_COUNT = 7
-LED_PIN = 21
+LED_PIN = 10
 
 class LEDsControl:
     def __init__(self) -> None:
