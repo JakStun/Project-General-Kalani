@@ -45,11 +45,35 @@ VIII. After sensing no activity for a long time (~5 mins) Servitor starts 'sleep
         - dtoverlay=googlevoicehat-soundcard
     III. sudo reboot
     IV. Check if MIC is recognised and record test audio:
-        - arecord -l
-        - arecrd -D hw:2,0 -f S32_LE -r 48000 -c 1 test.wav (if it doesn't work change hw:...,... -> maybe different port, can be seen by using func above)
+        - ```arecord -l```
+        - ```arecord -D hw:2,0 -f S32_LE -r 48000 -c 1 test.wav``` (if it doesn't work change hw:...,... -> maybe different port, can be seen by using func above)
         - speak into MIC
         - Ctrl+C -> stop recording
         - test.wav is created in /pi
+
+- Speaker Configuration setup (JBL Flip):
+    I. ```sudo systemctl start bluetooth```
+    II. ```sudo systemctl enable bluetooth```
+    III. ```bluetoothctl``` -> inside it:
+        ```power on```
+        ```agent on```
+        ```default-agent```
+        ```scan on``` -> search for XX:XX:XX:XX:XX:XX JBL Flip 3 (don't forget to start bluetooth on speaker aswell)
+        ```pair XX:XX:XX:XX:XX:XX``` -> after success, should also see a popup: connection successful
+        ```trust XX:XX:XX:XX:XX:XX```
+        ```connect XX:XX:XX:XX:XX:XX```
+        ```exit```
+        
+    IV. ```pactl list short sinks or wpctl status``` (depends on system) -> verify audio output, should be already default audio output (has * before name)
+    V. ```speaker-test -c2``` or ```pw-play /usr/share/sounds/alsa/Front_Center.wav``` -> you should a stomp sound
+
+    - if there is an error in bluetoothctl, check:
+        - ```sudo systemctl status bluetooth --no-pager```
+        - ```rfkill list```
+        - ```hciconfig -a```
+        - ```sudo rfkill unblock bluetooth```
+        - ```sudo systemctl restart bluetooth```
+        -> try running ```bluetoothctl``` and its commands again, should work now
 
 ---
 
