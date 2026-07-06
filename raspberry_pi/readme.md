@@ -31,22 +31,23 @@ VIII. After sensing no activity for a long time (~5 mins) Servitor starts 'sleep
 
 ## Before launching code (Cerebrum.py):
 
-- Interface Options (sudo raspi-config):
-    - enable I2S -> (needed for MIC)
+- Interface Options (```sudo raspi-config```):
+    - enable I2S (needed for MIC, it's not here anymore on newer version, just change config.txt)
+    - enable I2C (needed for PCA9685)
     - enable SPI (needed for LED Control)
     - Serial Port (needed for LD2410 sensor):
         - disable ligin shell over serial
         - enable serial hardware
 
 - MIC Configuration setup:
-    I. sudo nano /boot/firmware/config.txt
+    I. ```sudo nano /boot/firmware/config.txt```
     II. Add/uncomment:
-        - dtparam=i2s=on
-        - dtoverlay=googlevoicehat-soundcard
+        - ```dtparam=i2s=on```
+        - ```dtoverlay=googlevoicehat-soundcard```
     III. sudo reboot
     IV. Check if MIC is recognised and record test audio:
         - ```arecord -l```
-        - ```arecord -D hw:2,0 -f S32_LE -r 48000 -c 1 test.wav``` (if it doesn't work change hw:...,... -> maybe different port, can be seen by using func above)
+        - ```arecord -D hw:3,0 -f S32_LE -r 48000 -c2 test.wav``` (if it doesn't work change hw:...,... -> maybe different port, can be seen by using func above)
         - speak into MIC
         - Ctrl+C -> stop recording
         - test.wav is created in /pi

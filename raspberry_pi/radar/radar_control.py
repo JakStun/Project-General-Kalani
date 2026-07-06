@@ -32,7 +32,9 @@ class RadarControl:
     async def _configure(self) -> None:
         self.logger.info("[LD2410] Sensor activated ... configuring ...")
 
+        self.logger.debug("[LD2410] Before config mode")
         async with self._device.configure():
+            self.logger.debug("[LD2410] In config mode")
 
             await self._device.set_parameters(
                 moving_max_distance_gate=2,
