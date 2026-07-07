@@ -40,6 +40,7 @@ class Cerebrum:
         self.radar = RadarControl(self.event_queue)
         self.leds = LEDsControl()
         self.servos = ServoControlPCA9685()
+        self.microphone = MicrophoneControl()
 
         self.awake = False
 
@@ -49,6 +50,10 @@ class Cerebrum:
 
         asyncio.create_task(
             self.radar.run()
+        )
+
+        asyncio.create_task(
+            self.microphone.run()
         )
 
         self.logger.info("[CEREBRUM] Startup complete")
