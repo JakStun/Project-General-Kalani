@@ -1,7 +1,8 @@
+import numpy as np
 import webrtcvad
 
 class VoiceActivityDetector:
-    def __init__(self, aggressiveness: int = 2, sample_rate: int = 48000) -> None:
+    def __init__(self, aggressiveness: int = 3, sample_rate: int = 48000) -> None:
         """
         aggresiveness:
             0 -> least
@@ -12,10 +13,13 @@ class VoiceActivityDetector:
 
         self.vad = webrtcvad.Vad(aggressiveness)
 
-    def is_speech(self, frame) -> bool:
+    def is_speech(self, frame: np.ndarray) -> bool:
         """
         Params:
         frame -> np.ndarray(dtype=int16)
         """
 
-        return self.vad.is_speech(frame.tobytes(), sample_rate=self.sample_rate)
+        return self.vad.is_speech(
+            frame.tobytes(), 
+            sample_rate=self.sample_rate
+        )
