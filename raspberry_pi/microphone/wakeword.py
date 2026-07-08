@@ -1,4 +1,5 @@
 import numpy as np
+import time
 
 from openwakeword.model import Model
 
@@ -17,11 +18,15 @@ class WakeWordDetector:
         Returns:
         bool -> true if wakkeword detected
         """
-
+        t0 = time.perf_counter()
         frame16 = frame[::3]
-
+        
         predictions = self.model.predict(frame16)
 
         score = predictions[self.wakeword]
+
+        dt = (time.perf_counter() - t0) * 1000
+
+        print(f"[WAKEWORD] Score: {score:.3f} (took {dt:.1f} ms)")
 
         return score >= self.threshold
