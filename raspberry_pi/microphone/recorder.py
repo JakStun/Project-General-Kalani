@@ -10,8 +10,8 @@ class Recorder:
 
         self.device = device
 
-        self.sample_rate = int(device_info["default_samplerate"])
-        self.channels = device_info["max_input_channels"]
+        self.sample_rate = 48000
+        self.channels = 1
 
 
         self.frame_size = int(
@@ -19,10 +19,10 @@ class Recorder:
         )
 
         self.stream = sd.InputStream(
-            samplerate=self.sample_rate,
-            channels=self.channels,
+            samplerate=48000,
+            channels=2,
             dtype="int16",
-            device=self.device,
+            device=2,
             blocksize=self.frame_size,
         )
 

@@ -4,11 +4,10 @@ from openwakeword.model import Model
 
 class WakeWordDetector:
     def __init__(self, wakeword: str = "hey_jarvis", threshold: float = 0.5) -> None:
+        self.wakeword = wakeword
         self.threshold = threshold
 
-        self.model = Model(
-            wakeword_models=[wakeword],
-        )
+        self.model = Model()
 
     def process(self, frame: np.ndarray) -> bool:
         """
@@ -21,12 +20,8 @@ class WakeWordDetector:
 
         frame16 = frame[::3]
 
-        prediction = self.model.predict(frame16)
+        predictions = self.model.predict(frame16)
 
-        score = prediction["hey_jarvis"]
+        score = predictions[self.wakeword]
 
         return score >= self.threshold
-
-    @property
-    def detected(self) -> bool:
-        pass
