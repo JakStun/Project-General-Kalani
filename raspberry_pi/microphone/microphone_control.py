@@ -19,6 +19,8 @@ class MicrophoneControl:
             daemon=True
         )
 
+        self.wakeword_thread.start()
+
         self.recorder = Recorder()
 
         self.buffer = AudioBuffer(
@@ -82,7 +84,7 @@ class MicrophoneControl:
             detected = self.wakeword.process(frame)
 
             if detected:
-                self.wakeword
+                self.wakeword_detected = True
 
 if __name__ == "__main__":
     import asyncio

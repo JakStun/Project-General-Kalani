@@ -27,6 +27,6 @@ class WakeWordDetector:
 
         dt = (time.perf_counter() - t0) * 1000
 
-        print(f"[WAKEWORD] Score: {score:.3f} (took {dt:.1f} ms)")
+        # print(f"[WAKEWORD] Score: {score:.3f} (took {dt:.1f} ms)")
 
         return score >= self.threshold
