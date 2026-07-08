@@ -1,4 +1,5 @@
-import numpy as np
+import queue
+import threading
 
 from logging import getLogger
 
@@ -10,7 +11,14 @@ from .wakeword import WakeWordDetector
 class MicrophoneControl:
     def __init__(self):
         self.logger = getLogger("main")
-        
+
+        self.wakeword_queue = queue.Queue(maxsize=10)
+
+        self.wakeword_thread = threading.Thread(
+            target=self._wakeword_worker,
+            daemon=True
+        )
+
         self.recorder = Recorder()
 
         self.buffer = AudioBuffer(
@@ -30,6 +38,8 @@ class MicrophoneControl:
         self.start_threshold = 3
         self.stop_threshold = 10
 
+        self.wakeword_detected = False
+
     async def run(self):
         self.logger.info("[MIC] Listening ...")
 
@@ -39,20 +49,17 @@ class MicrophoneControl:
             
             self.buffer.push(frame)
 
-            if overflow:
-                self.logger.warning(f"[MIC] Overflow")
+            is_speech = self.vad.is_speech(frame)
 
-            detected = self.wakeword.process(frame)
+            try:
+                self.wakeword_queue.put_nowait(frame.copy())
+            except queue.Full:
+                pass
 
-            if detected:
-                self.logger.info("[MIC] Wake word detected")
+            if self.wakeword_detected:
+                self.logger.info("[MIC] Wakeword detected!")
+                self.wakeword_detected = False
 
-            rms = np.sqrt(np.mean(frame.astype(np.float32) ** 2))
-
-            if rms < 200:
-                self.speaking = False
-            else:
-                is_speech = self.vad.is_speech(frame)
 
             if is_speech and not self.speaking:
                 self.speech_frames += 1
@@ -67,6 +74,15 @@ class MicrophoneControl:
             elif self.speaking and self.silence_frames >= self.stop_threshold:
                 self.speaking = False
                 self.logger.info("[MIC] Speech stopped")
+
+    def _wakeword_worker(self):
+        while True:
+            frame = self.wakeword_queue.get()
+
+            detected = self.wakeword.process(frame)
+
+            if detected:
+                self.wakeword
 
 if __name__ == "__main__":
     import asyncio

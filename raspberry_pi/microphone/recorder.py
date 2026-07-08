@@ -1,7 +1,7 @@
 import asyncio
 import sounddevice as sd
 import numpy as np
-import threading
+# import threading
 import queue
 
 class Recorder:
@@ -26,20 +26,21 @@ class Recorder:
             dtype="int16",
             device=2,
             blocksize=self.frame_size,
+            callback=self._audio_callback,
         )
 
         self.stream.start()
 
-        self.queue = queue.Queue(maxsize=20)
+        self.queue = queue.Queue(maxsize=10)
 
-        self.running = True
+        # self.running = True
 
-        self.thread = threading.Thread(
-            target=self._capture_loop,
-            daemon=True
-        )
+        # self.thread = threading.Thread(
+        #     target=self._capture_loop,
+        #     daemon=True
+        # )
 
-        self.thread.start()
+        # self.thread.start()
 
     async def read_frame(self) -> np.ndarray:
         return await asyncio.to_thread(
@@ -47,12 +48,23 @@ class Recorder:
         )
 
     def close(self) -> None:
-        self.running = False
+        # self.running = False
         
-        self.thread.join(timeout=1)
+        # self.thread.join(timeout=1)
 
         self.stream.stop()
         self.stream.close()
+
+    def _audio_callback(self, indata, frames, time, status):
+        overflow = status.input_overflow
+
+        frame = indata[:, 0].copy()
+        
+        try:
+            self.queue.put_nowait((frame, overflow))
+        except queue.Full:
+            self.queue.get_nowait()
+            self.queue.put_nowait((frame, overflow))
 
     def _capture_loop(self) -> None:
         while self.running:
