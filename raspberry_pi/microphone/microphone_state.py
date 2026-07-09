@@ -4,3 +4,5 @@ class MicrophoneState(Enum):
     LISTENING = auto()
 
     RECORDING = auto()
+
+    PROCESSING = auto()

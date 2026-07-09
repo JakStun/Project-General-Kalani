@@ -1,5 +1,7 @@
+import numpy as np
 import queue
 import threading
+import wave
 
 from logging import getLogger
 
@@ -46,6 +48,12 @@ class MicrophoneControl:
 
         self.state = MicrophoneState.LISTENING
 
+        self.recording_frames = []
+
+        self.recording_silence = 0
+
+        self.recording_stop_frames = 40
+
     async def run(self):
         self.logger.info("[MIC] Listening ...")
 
@@ -73,6 +81,12 @@ class MicrophoneControl:
         if self.wakeword_detected:
             self.wakeword_detected = False
 
+            self.recording_frames = [
+                self.buffer.get_audio()
+            ]
+
+            self.recording_silence = 0
+
             self.state = MicrophoneState.RECORDING
 
             self.logger.info("[MIC] Wakeword detected, entering RECORDING mode!")
@@ -94,7 +108,29 @@ class MicrophoneControl:
             self.logger.info("[MIC] Speech stopped")
 
     async def _handle_recording(self, frame):
-        pass
+        
+        self.recording_frames.append(frame.copy())
+
+        if self.vad.is_speech(frame):
+            self.recording_silence = 0
+        else:
+            self.recording_silence += 1
+
+        if self.recording_silence >= self.recording_stop_frames:
+            self.logger.info("[MIC] Recording finished, entering PROCESSING mode!")
+
+            self.state = MicrophoneState.PROCESSING
+
+            audio = np.concatenate(
+                self.recording_frames
+            )
+
+            with wave.open("recordings/last_recording.wav", "wb") as wav:
+                wav.setnchannels(1)
+                wav.setsampwidth(2)
+                wav.setframerate(48000)
+
+                wav.writeframes(audio.tobytes())
 
 
     def _wakeword_worker(self):
