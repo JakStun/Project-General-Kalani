@@ -8,6 +8,8 @@ from .recorder import Recorder
 from .vad import VoiceActivityDetector
 from .wakeword import WakeWordDetector
 
+from .microphone_state import MicrophoneState
+
 class MicrophoneControl:
     def __init__(self):
         self.logger = getLogger("main")
@@ -42,6 +44,8 @@ class MicrophoneControl:
 
         self.wakeword_detected = False
 
+        self.state = MicrophoneState.LISTENING
+
     async def run(self):
         self.logger.info("[MIC] Listening ...")
 
@@ -51,31 +55,47 @@ class MicrophoneControl:
             
             self.buffer.push(frame)
 
-            is_speech = self.vad.is_speech(frame)
+            if self.state == MicrophoneState.LISTENING:
+                await self._handle_listening(frame)
 
-            try:
-                self.wakeword_queue.put_nowait(frame.copy())
-            except queue.Full:
-                pass
+            elif self.state == MicrophoneState.RECORDING:
+                await self._handle_recording(frame)
 
-            if self.wakeword_detected:
-                self.logger.info("[MIC] Wakeword detected!")
-                self.wakeword_detected = False
+        
+    async def _handle_listening(self, frame):
+        is_speech = self.vad.is_speech(frame)
+
+        try:
+            self.wakeword_queue.put_nowait(frame.copy())
+        except queue.Full:
+            pass
+
+        if self.wakeword_detected:
+            self.wakeword_detected = False
+
+            self.state = MicrophoneState.RECORDING
+
+            self.logger.info("[MIC] Wakeword detected, entering RECORDING mode!")
+            
 
 
-            if is_speech and not self.speaking:
-                self.speech_frames += 1
-                self.silence_frames = 0
-            elif not is_speech and self.speaking:
-                self.silence_frames += 1
-                self.speech_frames = 0
+        if is_speech and not self.speaking:
+            self.speech_frames += 1
+            self.silence_frames = 0
+        elif not is_speech and self.speaking:
+            self.silence_frames += 1
+            self.speech_frames = 0
 
-            if not self.speaking and self.speech_frames >= self.start_threshold:
-                self.speaking = True
-                self.logger.info("[MIC] Speech started")
-            elif self.speaking and self.silence_frames >= self.stop_threshold:
-                self.speaking = False
-                self.logger.info("[MIC] Speech stopped")
+        if not self.speaking and self.speech_frames >= self.start_threshold:
+            self.speaking = True
+            self.logger.info("[MIC] Speech started")
+        elif self.speaking and self.silence_frames >= self.stop_threshold:
+            self.speaking = False
+            self.logger.info("[MIC] Speech stopped")
+
+    async def _handle_recording(self, frame):
+        pass
+
 
     def _wakeword_worker(self):
         while True:
