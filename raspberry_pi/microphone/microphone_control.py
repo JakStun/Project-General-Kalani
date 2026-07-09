@@ -46,6 +46,7 @@ class MicrophoneControl:
         self.stop_threshold = 10
 
         self.wakeword_detected = False
+        self.wakeword_enabled = True
 
         self.state = MicrophoneState.LISTENING
 
@@ -68,6 +69,7 @@ class MicrophoneControl:
                 await self._handle_listening(frame)
 
             elif self.state == MicrophoneState.RECORDING:
+                self.wakeword_enabled = False
                 await self._handle_recording(frame)
 
         
@@ -141,6 +143,13 @@ class MicrophoneControl:
 
             self.wakeword.reset()
 
+            with self.wakeword_queue.mutex:
+                self.wakeword_queue.queue.clear()
+
+            self.wakeword_enabled = True
+            self.wakeword_detected = False
+
+
             self.state = MicrophoneState.LISTENING
 
             self.logger.info("[MIC] Entering LISTENING mode!")
@@ -150,9 +159,12 @@ class MicrophoneControl:
         while True:
             frame = self.wakeword_queue.get()
 
+            if not self.wakeword_enabled:
+                continue
+
             detected = self.wakeword.process(frame)
 
-            if detected:
+            if detected and not self.wakeword_detected:
                 self.wakeword_detected = True
 
 if __name__ == "__main__":
