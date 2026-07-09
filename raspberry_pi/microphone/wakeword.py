@@ -30,3 +30,6 @@ class WakeWordDetector:
         # print(f"[WAKEWORD] Score: {score:.3f} (took {dt:.1f} ms)")
 
         return score >= self.threshold
+
+    def reset(self):
+        self.model.reset()

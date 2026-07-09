@@ -3,6 +3,7 @@ import queue
 import threading
 import wave
 
+from datetime import datetime
 from logging import getLogger
 
 from .audio_buffer import AudioBuffer
@@ -125,12 +126,24 @@ class MicrophoneControl:
                 self.recording_frames
             )
 
-            with wave.open("recordings/last_recording.wav", "wb") as wav:
+            filename = datetime.now().strftime("recordings/recording_%Y%m%d_%H%M%S.wav")
+
+            with wave.open(filename, "wb") as wav:
                 wav.setnchannels(1)
                 wav.setsampwidth(2)
                 wav.setframerate(48000)
 
                 wav.writeframes(audio.tobytes())
+
+            self.recording_frames.clear()
+
+            self.buffer.clear()
+
+            self.wakeword.reset()
+
+            self.state = MicrophoneState.LISTENING
+
+            self.logger.info("[MIC] Entering LISTENING mode!")
 
 
     def _wakeword_worker(self):
