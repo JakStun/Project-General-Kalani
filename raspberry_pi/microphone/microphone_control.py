@@ -46,7 +46,7 @@ class MicrophoneControl:
         self.start_threshold = 3
         self.stop_threshold = 10
 
-        self.wakeword_detected = False
+        # self.wakeword_detected = False
 
         self.state = MicrophoneState.LISTENING
 
@@ -56,10 +56,7 @@ class MicrophoneControl:
 
         self.recording_stop_frames = 40
         
-        self.last_wakeword_time = 0.0
-        self.wakeword_cooldown = 3.0
-
-        self.wakeword_event = threading.Event()
+        self.wakeword_score = 0.0
 
     async def run(self):
         self.logger.info("[MIC] Listening ...")
@@ -85,19 +82,18 @@ class MicrophoneControl:
         except queue.Full:
             pass
 
-        if self.wakeword_event.is_set():
-            self.wakeword_event.clear()
-
-            self.recording_frames = [
-                self.buffer.get_audio()
-            ]
-
-            self.recording_silence = 0
+        if self.wakeword_score >= self.wakeword.threshold:
+            self.wakeword_score = 0.0
 
             self.state = MicrophoneState.RECORDING
 
+            self.recording_frames = [
+                self.buffer.get_audio()
+            ]    
+
+            self.recording_silence = 0
+
             self.logger.info("[MIC] Wakeword detected, entering RECORDING mode!")
-            
 
 
         if is_speech and not self.speaking:
@@ -147,12 +143,12 @@ class MicrophoneControl:
 
             self.wakeword.reset()
 
-            self.wakeword_event.clear()
+            # self.wakeword_event.clear()
 
             with self.wakeword_queue.mutex:
                 self.wakeword_queue.queue.clear()
 
-            self.wakeword_detected = False
+            # self.wakeword_detected = False
 
 
             self.state = MicrophoneState.LISTENING
@@ -164,15 +160,17 @@ class MicrophoneControl:
         while True:
             frame = self.wakeword_queue.get()
 
-            detected = self.wakeword.process(frame)
+            self.wakeword_score = self.wakeword.process(frame)
 
-            if detected:
-                self.wakeword_event.set()
-                now = time.monotonic()
+            # detected = self.wakeword.process(frame)
 
-                if now - self.last_wakeword_time >= self.wakeword_cooldown:
-                    self.wakeword_detected = True
-                    self.last_wakeword_time = now
+            # if detected:
+            #     self.wakeword_event.set()
+            #     now = time.monotonic()
+
+            #     if now - self.last_wakeword_time >= self.wakeword_cooldown:
+            #         self.wakeword_detected = True
+            #         self.last_wakeword_time = now
 
                
 if __name__ == "__main__":

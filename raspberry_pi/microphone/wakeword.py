@@ -10,13 +10,13 @@ class WakeWordDetector:
 
         self.model = Model()
 
-    def process(self, frame: np.ndarray) -> bool:
+    def process(self, frame: np.ndarray) -> float:
         """
         Params:
         frame -> Mono int16 PCM at 48 kHz
 
         Returns:
-        bool -> true if wakkeword detected
+        float -> confidence score for the wakeword
         """
         t0 = time.perf_counter()
         frame16 = frame[::3]
@@ -30,7 +30,7 @@ class WakeWordDetector:
         # print(f"[WAKEWORD] Score: {score:.3f} (took {dt:.1f} ms)")
         print(f"[WAKEWORD] {time.monotonic():.3f} detected -> {score:.3f}")
 
-        return score >= self.threshold
+        return float(score)
 
     def reset(self):
         self.model.reset()
