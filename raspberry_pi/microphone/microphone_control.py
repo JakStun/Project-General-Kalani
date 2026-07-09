@@ -69,7 +69,6 @@ class MicrophoneControl:
                 await self._handle_listening(frame)
 
             elif self.state == MicrophoneState.RECORDING:
-                self.wakeword_enabled = False
                 await self._handle_recording(frame)
 
         
@@ -83,6 +82,8 @@ class MicrophoneControl:
 
         if self.wakeword_detected:
             self.wakeword_detected = False
+
+            self.wakeword_enabled = False
 
             self.recording_frames = [
                 self.buffer.get_audio()
@@ -164,8 +165,14 @@ class MicrophoneControl:
 
             detected = self.wakeword.process(frame)
 
-            if detected and not self.wakeword_detected:
+            if (
+                self.wakeword_enabled
+                and detected
+                and not self.wakeword_detected
+            ):
                 self.wakeword_detected = True
+
+                self.logger.info("[WAKEWORD THREAD] detected (enabled=%s)", self.wakeword_enabled)
 
 if __name__ == "__main__":
     import asyncio
