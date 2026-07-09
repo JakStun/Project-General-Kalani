@@ -1,6 +1,7 @@
 import numpy as np
 import queue
 import threading
+import time
 import wave
 
 from datetime import datetime
@@ -46,7 +47,6 @@ class MicrophoneControl:
         self.stop_threshold = 10
 
         self.wakeword_detected = False
-        self.wakeword_enabled = True
 
         self.state = MicrophoneState.LISTENING
 
@@ -55,6 +55,11 @@ class MicrophoneControl:
         self.recording_silence = 0
 
         self.recording_stop_frames = 40
+        
+        self.last_wakeword_time = 0.0
+        self.wakeword_cooldown = 3.0
+
+        self.wakeword_event = threading.Event()
 
     async def run(self):
         self.logger.info("[MIC] Listening ...")
@@ -80,10 +85,8 @@ class MicrophoneControl:
         except queue.Full:
             pass
 
-        if self.wakeword_detected:
-            self.wakeword_detected = False
-
-            self.wakeword_enabled = False
+        if self.wakeword_event.is_set():
+            self.wakeword_event.clear()
 
             self.recording_frames = [
                 self.buffer.get_audio()
@@ -144,10 +147,11 @@ class MicrophoneControl:
 
             self.wakeword.reset()
 
+            self.wakeword_event.clear()
+
             with self.wakeword_queue.mutex:
                 self.wakeword_queue.queue.clear()
 
-            self.wakeword_enabled = True
             self.wakeword_detected = False
 
 
@@ -160,20 +164,17 @@ class MicrophoneControl:
         while True:
             frame = self.wakeword_queue.get()
 
-            if not self.wakeword_enabled:
-                continue
-
             detected = self.wakeword.process(frame)
 
-            if (
-                self.wakeword_enabled
-                and detected
-                and not self.wakeword_detected
-            ):
-                self.wakeword_detected = True
+            if detected:
+                self.wakeword_event.set()
+                now = time.monotonic()
 
-                self.logger.info("[WAKEWORD THREAD] detected (enabled=%s)", self.wakeword_enabled)
+                if now - self.last_wakeword_time >= self.wakeword_cooldown:
+                    self.wakeword_detected = True
+                    self.last_wakeword_time = now
 
+               
 if __name__ == "__main__":
     import asyncio
 

@@ -24,7 +24,7 @@ class Recorder:
             samplerate=48000,
             channels=2,
             dtype="int16",
-            device=2,
+            device=1,
             blocksize=self.frame_size,
             callback=self._audio_callback,
         )
