@@ -99,7 +99,7 @@ class LEDsControl:
 
             self.strip.show()
 
-            await asyncio.sleep(0.08)
+            await asyncio.sleep(0.1)
 
         # final brief flicker
         self._fill(255, 255, 255)
@@ -132,7 +132,12 @@ class LEDsControl:
             task = self._active_task
             self._active_task = None
 
-            await task
+            task.cancel()
+
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
 
     async def active_loop(self) -> None:
         while self.state == LEDState.ACTIVE:
@@ -169,7 +174,7 @@ class LEDsControl:
 
             self.strip.show()
 
-            await asyncio.sleep(random.uniform(0.005, 0.03))
+            await asyncio.sleep(random.uniform(0.05, 0.8))
 
         # stabilizing
         for led in affected:

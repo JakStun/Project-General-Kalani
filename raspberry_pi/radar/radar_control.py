@@ -1,3 +1,5 @@
+import time
+
 from events import Event
 from aio_ld2410 import LD2410
 from logging import getLogger
@@ -13,6 +15,8 @@ class RadarControl:
 
         self.detected = False
         self.distance = 999
+
+        self.last_seen = 0
 
         self._device = None
 
@@ -52,13 +56,18 @@ class RadarControl:
         self.logger.info("[LD2410] Configuration DONE")
 
     async def _handle_report(self, report) -> None:
+        # if self.detected == True:
+        #     return
+        
         basic = report.basic
 
         currently_detected = bool(
-            basic.target_status != 0 and 30 <= basic.moving_distance <= 55
+            basic.target_status != 0 and 30 < basic.moving_distance <= 55
         )
 
         if currently_detected and not self.detected:
+            self.last_seen = time.monotonic()
+
             self.distance = basic.detection_distance
 
             self.detected = True
@@ -74,7 +83,11 @@ class RadarControl:
                 )
             )
 
-        elif not currently_detected and self.detected:
+        elif (
+            not currently_detected 
+            and self.detected 
+            and time.monotonic() - self.last_seen > 5
+        ):
             self.detected = False
 
             self.logger.info("[LD2410] TARGET LOST")

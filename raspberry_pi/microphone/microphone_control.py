@@ -20,13 +20,6 @@ class MicrophoneControl:
 
         self.wakeword_queue = queue.Queue(maxsize=10)
 
-        self.wakeword_thread = threading.Thread(
-            target=self._wakeword_worker,
-            daemon=True
-        )
-
-        self.wakeword_thread.start()
-
         self.recorder = Recorder()
 
         self.buffer = AudioBuffer(
@@ -36,6 +29,14 @@ class MicrophoneControl:
         )
 
         self.wakeword = WakeWordDetector()
+
+        self.wakeword_thread = threading.Thread(
+            target=self._wakeword_worker,
+            daemon=True
+        )
+
+        self.wakeword_thread.start()
+
 
         self.vad = VoiceActivityDetector(sample_rate=self.recorder.sample_rate)
         self.speaking = False
@@ -143,6 +144,8 @@ class MicrophoneControl:
 
             self.wakeword.reset()
 
+            self.wakeword_score = 0.0
+
             # self.wakeword_event.clear()
 
             with self.wakeword_queue.mutex:
@@ -160,7 +163,10 @@ class MicrophoneControl:
         while True:
             frame = self.wakeword_queue.get()
 
-            self.wakeword_score = self.wakeword.process(frame)
+            score = self.wakeword.process(frame)
+
+            if score >= self.wakeword.threshold:
+                self.wakeword_score = score
 
             # detected = self.wakeword.process(frame)
 
