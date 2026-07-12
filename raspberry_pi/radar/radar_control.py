@@ -65,28 +65,29 @@ class RadarControl:
             basic.target_status != 0 and 30 < basic.moving_distance <= 55
         )
 
-        if currently_detected and not self.detected:
+        if currently_detected: # and not self.detected
             self.last_seen = time.monotonic()
 
             self.distance = basic.detection_distance
 
-            self.detected = True
+            if not self.detected:
+                self.detected = True
 
-            self.logger.info(f"[LD2410] TARGET DETECTED ({self.distance}cm)")
+                self.logger.info(f"[LD2410] TARGET DETECTED ({self.distance}cm)")
 
-            await self.event_queue.put(
-                (
-                    Event.RADAR_DETECTED,
-                    {
-                        "distance": self.distance,
-                    }
+                await self.event_queue.put(
+                    (
+                        Event.RADAR_DETECTED,
+                        {
+                            "distance": self.distance,
+                        }
+                    )
                 )
-            )
 
         elif (
-            not currently_detected 
-            and self.detected 
-            and time.monotonic() - self.last_seen > 5
+            # not currently_detected 
+            self.detected
+            and time.monotonic() - self.last_seen > 15
         ):
             self.detected = False
 

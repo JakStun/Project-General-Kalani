@@ -54,14 +54,14 @@ class ServoControlPCA9685:
     async def wake_animation(self) -> None: 
         self.logger.info("[SERVO] Servitors gears moving to awoken stature...") 
         
-        await self.move(40) # TODO: experiment 
-        await self.move(20, duration=0.5) 
+        await self.move(15) # TODO: experiment 
+        await self.move(10, duration=0.5) 
 
     async def sleep_animation(self) -> None: 
         self.logger.info("[SERVO] Servitors gears moving to slumber stature...") 
         
-        await self.move(-40) 
-        await self.move(-60, duration=0.5) 
+        await self.move(-25) 
+        await self.move(-30, duration=0.5) 
 
     async def move(self, target: float, duration: float = 2.5, steps: int = 50) -> None: 
         """ Moves servitor joints to set position <-90, 90> """ 
