@@ -1,6 +1,4 @@
 import numpy as np
-import queue
-import threading
 import time
 import wave
 
@@ -18,8 +16,6 @@ class MicrophoneControl:
     def __init__(self):
         self.logger = getLogger("main")
 
-        self.wakeword_queue = queue.Queue(maxsize=10)
-
         self.recorder = Recorder()
 
         self.buffer = AudioBuffer(
@@ -29,13 +25,6 @@ class MicrophoneControl:
         )
 
         self.wakeword = WakeWordDetector()
-
-        self.wakeword_thread = threading.Thread(
-            target=self._wakeword_worker,
-            daemon=True
-        )
-
-        self.wakeword_thread.start()
 
 
         self.vad = VoiceActivityDetector(sample_rate=self.recorder.sample_rate)
@@ -56,8 +45,6 @@ class MicrophoneControl:
         self.recording_silence = 0
 
         self.recording_stop_frames = 40
-        
-        self.wakeword_score = 0.0
 
     async def run(self):
         self.logger.info("[MIC] Listening ...")
@@ -78,13 +65,18 @@ class MicrophoneControl:
     async def _handle_listening(self, frame):
         is_speech = self.vad.is_speech(frame)
 
-        try:
-            self.wakeword_queue.put_nowait(frame.copy())
-        except queue.Full:
-            pass
+        t0 = time.perf_counter()
 
-        if self.wakeword_score >= self.wakeword.threshold:
-            self.wakeword_score = 0.0
+        score = self.wakeword.process(frame)
+
+        dt = (time.perf_counter() - t0)* 1000
+
+        if dt > 25:
+            self.logger.info(
+                f"[WAKEWORD] Inference took {dt:.1f} ms"
+            )
+
+        if score >= self.wakeword.threshold:
 
             self.state = MicrophoneState.RECORDING
 
@@ -146,37 +138,10 @@ class MicrophoneControl:
 
             self.wakeword_score = 0.0
 
-            # self.wakeword_event.clear()
-
-            with self.wakeword_queue.mutex:
-                self.wakeword_queue.queue.clear()
-
-            # self.wakeword_detected = False
-
 
             self.state = MicrophoneState.LISTENING
 
             self.logger.info("[MIC] Entering LISTENING mode!")
-
-
-    def _wakeword_worker(self):
-        while True:
-            frame = self.wakeword_queue.get()
-
-            score = self.wakeword.process(frame)
-
-            if score >= self.wakeword.threshold:
-                self.wakeword_score = score
-
-            # detected = self.wakeword.process(frame)
-
-            # if detected:
-            #     self.wakeword_event.set()
-            #     now = time.monotonic()
-
-            #     if now - self.last_wakeword_time >= self.wakeword_cooldown:
-            #         self.wakeword_detected = True
-            #         self.last_wakeword_time = now
 
                
 if __name__ == "__main__":

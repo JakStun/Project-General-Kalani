@@ -7,7 +7,7 @@ import yaml
 
 from events import Event
 from leds import LEDsControl
-# from microphone import MicrophoneControl
+from microphone import MicrophoneControl
 from radar import RadarControl
 from servos import ServoControlPCA9685
 
@@ -40,7 +40,7 @@ class Cerebrum:
         self.radar = RadarControl(self.event_queue)
         self.leds = LEDsControl()
         self.servos = ServoControlPCA9685()
-        # self.microphone = MicrophoneControl()
+        self.microphone = MicrophoneControl()
 
         self.awake = False
 
@@ -52,9 +52,9 @@ class Cerebrum:
             self.radar.run()
         )
 
-        # asyncio.create_task(
-        #     self.microphone.run()
-        # )
+        asyncio.create_task(
+            self.microphone.run()
+        )
 
         self.logger.info("[CEREBRUM] Startup complete")
 
