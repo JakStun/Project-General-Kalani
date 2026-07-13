@@ -7,7 +7,7 @@ import yaml
 
 from events import Event
 from leds import LEDsControl
-from microphone import MicrophoneControl
+from microphone import MicrophoneControl, MicrophoneState
 from radar import RadarControl
 from servos import ServoControlPCA9685
 
@@ -73,6 +73,15 @@ class Cerebrum:
 
                 case Event.RADAR_LOST:
                     await self.sleep()
+
+                case MicrophoneState.PROCESSING:
+                    self.logger.info("[CEREBRUM] Simulationg processing")
+
+                    await asyncio.sleep(3)
+
+                    self.microphone.finish_interaction()
+
+                    await asyncio.sleep(0.5)
 
             self.event_queue.task_done()
 

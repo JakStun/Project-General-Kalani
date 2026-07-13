@@ -46,6 +46,8 @@ class MicrophoneControl:
 
         self.recording_stop_frames = 40
 
+        self.interaction_active = False
+
     async def run(self):
         self.logger.info("[MIC] Listening ...")
 
@@ -63,20 +65,20 @@ class MicrophoneControl:
 
         
     async def _handle_listening(self, frame):
+        if self.interaction_active:
+            return
+        
         is_speech = self.vad.is_speech(frame)
 
-        t0 = time.perf_counter()
 
         score = self.wakeword.process(frame)
+        
+        if (
+            not self.interaction_active
+            and score >= self.wakeword.threshold
+            ):
 
-        dt = (time.perf_counter() - t0)* 1000
-
-        if dt > 25:
-            self.logger.info(
-                f"[WAKEWORD] Inference took {dt:.1f} ms"
-            )
-
-        if score >= self.wakeword.threshold:
+            self.interaction_active = True
 
             self.state = MicrophoneState.RECORDING
 
@@ -115,8 +117,6 @@ class MicrophoneControl:
         if self.recording_silence >= self.recording_stop_frames:
             self.logger.info("[MIC] Recording finished, entering PROCESSING mode!")
 
-            self.state = MicrophoneState.PROCESSING
-
             audio = np.concatenate(
                 self.recording_frames
             )
@@ -130,18 +130,37 @@ class MicrophoneControl:
 
                 wav.writeframes(audio.tobytes())
 
+            self.ignore_wakeword_frames = 20
+
             self.recording_frames.clear()
 
             self.buffer.clear()
 
             self.wakeword.reset()
 
-            self.wakeword_score = 0.0
+            self.state = MicrophoneState.PROCESSING
 
+            # self.state = MicrophoneState.LISTENING
 
-            self.state = MicrophoneState.LISTENING
+            # self.logger.info("[MIC] Entering LISTENING mode!")
 
-            self.logger.info("[MIC] Entering LISTENING mode!")
+    def finish_interaction(self):
+        self.logger.info("[MIC] Interacton finished")
+
+        self.buffer.clear()
+
+        self.recording_frames.clear()
+
+        self.recording_silence = 0
+
+        self.wakeword.reset()
+
+        self.interaction_active = False
+
+        self.state = MicrophoneState.LISTENING
+
+        self.logger.info("[MIC] Entering LISTENING mode!")
+
 
                
 if __name__ == "__main__":
