@@ -5,6 +5,8 @@ import wave
 from datetime import datetime
 from logging import getLogger
 
+from events import Event
+
 from .audio_buffer import AudioBuffer
 from .recorder import Recorder
 from .vad import VoiceActivityDetector
@@ -13,8 +15,10 @@ from .wakeword import WakeWordDetector
 from .microphone_state import MicrophoneState
 
 class MicrophoneControl:
-    def __init__(self):
+    def __init__(self, event_queue):
         self.logger = getLogger("main")
+
+        self.event_queue = event_queue
 
         self.recorder = Recorder()
 
@@ -64,10 +68,7 @@ class MicrophoneControl:
                 await self._handle_recording(frame)
 
         
-    async def _handle_listening(self, frame):
-        if self.interaction_active:
-            return
-        
+    async def _handle_listening(self, frame):       
         is_speech = self.vad.is_speech(frame)
 
 
@@ -139,6 +140,10 @@ class MicrophoneControl:
             self.wakeword.reset()
 
             self.state = MicrophoneState.PROCESSING
+
+            await self.event_queue.put(
+                (Event.MIC_PROCESSING, None)
+            )
 
             # self.state = MicrophoneState.LISTENING
 
