@@ -71,13 +71,18 @@ class MicrophoneControl:
     async def _handle_listening(self, frame):       
         is_speech = self.vad.is_speech(frame)
 
-
-        score = self.wakeword.process(frame)
+        if not self.wakeword.already_trigerred:
+            score = self.wakeword.process(frame)
+        else:
+            score = 0.0
         
         if (
             not self.interaction_active
             and score >= self.wakeword.threshold
             ):
+
+            self.wakeword.recording = True
+            self.wakeword.already_trigerred = True
 
             self.interaction_active = True
 
@@ -90,6 +95,9 @@ class MicrophoneControl:
             self.recording_silence = 0
 
             self.logger.info("[MIC] Wakeword detected, entering RECORDING mode!")
+
+        elif score < self.wakeword.threshold:
+            self.wakeword.already_trigerred = False
 
 
         if is_speech and not self.speaking:
@@ -163,6 +171,8 @@ class MicrophoneControl:
         self.interaction_active = False
 
         self.state = MicrophoneState.LISTENING
+
+        self.wakeword.recording = False
 
         self.logger.info("[MIC] Entering LISTENING mode!")
 
