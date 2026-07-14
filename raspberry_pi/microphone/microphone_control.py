@@ -68,36 +68,32 @@ class MicrophoneControl:
                 await self._handle_recording(frame)
 
         
-    async def _handle_listening(self, frame):       
+    async def _handle_listening(self, frame):
+        if self.interaction_active:
+            return
+           
         is_speech = self.vad.is_speech(frame)
-
-        if not self.wakeword.already_trigerred:
-            score = self.wakeword.process(frame)
-        else:
-            score = 0.0
         
-        if (
-            not self.interaction_active
-            and score >= self.wakeword.threshold
-            ):
+        if not is_speech:
+            return
+        
+        score = self.wakeword.process(frame)
 
-            self.wakeword.recording = True
-            self.wakeword.already_trigerred = True
+        if score < self.wakeword.threshold:
+            return
+        
 
-            self.interaction_active = True
+        self.interaction_active = True
 
-            self.state = MicrophoneState.RECORDING
+        self.state = MicrophoneState.RECORDING
 
-            self.recording_frames = [
-                self.buffer.get_audio()
-            ]    
+        self.recording_frames = [
+            self.buffer.get_audio()
+        ]    
 
-            self.recording_silence = 0
+        self.recording_silence = 0
 
-            self.logger.info("[MIC] Wakeword detected, entering RECORDING mode!")
-
-        elif score < self.wakeword.threshold:
-            self.wakeword.already_trigerred = False
+        self.logger.info("[MIC] Wakeword detected, entering RECORDING mode!")
 
 
         if is_speech and not self.speaking:
@@ -124,6 +120,8 @@ class MicrophoneControl:
             self.recording_silence += 1
 
         if self.recording_silence >= self.recording_stop_frames:
+            self.state = MicrophoneState.PROCESSING
+
             self.logger.info("[MIC] Recording finished, entering PROCESSING mode!")
 
             audio = np.concatenate(
@@ -146,8 +144,6 @@ class MicrophoneControl:
             self.buffer.clear()
 
             self.wakeword.reset()
-
-            self.state = MicrophoneState.PROCESSING
 
             await self.event_queue.put(
                 (Event.MIC_PROCESSING, None)
@@ -173,6 +169,9 @@ class MicrophoneControl:
         self.state = MicrophoneState.LISTENING
 
         self.wakeword.recording = False
+
+        while not self.recorder.queue.empty():
+            self.recorder.queue.get_nowair()
 
         self.logger.info("[MIC] Entering LISTENING mode!")
 
