@@ -1,7 +1,6 @@
 import asyncio
 import sounddevice as sd
 import numpy as np
-# import threading
 import queue
 
 class Recorder:
@@ -33,27 +32,20 @@ class Recorder:
 
         self.queue = queue.Queue(maxsize=10)
 
-        # self.running = True
-
-        # self.thread = threading.Thread(
-        #     target=self._capture_loop,
-        #     daemon=True
-        # )
-
-        # self.thread.start()
-
     async def read_frame(self) -> np.ndarray:
         return await asyncio.to_thread(
             self.queue.get
         )
 
     def close(self) -> None:
-        # self.running = False
-        
-        # self.thread.join(timeout=1)
-
         self.stream.stop()
         self.stream.close()
+
+    def pause(self):
+        self.stream.stop()
+
+    def resume(self):
+        self.stream.start()
 
     def _audio_callback(self, indata, frames, time, status):
         overflow = status.input_overflow

@@ -50,8 +50,6 @@ class MicrophoneControl:
 
         self.recording_stop_frames = 40
 
-        self.interaction_active = False
-
     async def run(self):
         self.logger.info("[MIC] Listening ...")
 
@@ -69,7 +67,7 @@ class MicrophoneControl:
 
         
     async def _handle_listening(self, frame):
-        if self.interaction_active:
+        if self.state != MicrophoneState.LISTENING:
             return
            
         is_speech = self.vad.is_speech(frame)
@@ -82,8 +80,6 @@ class MicrophoneControl:
         if score < self.wakeword.threshold:
             return
         
-
-        self.interaction_active = True
 
         self.state = MicrophoneState.RECORDING
 
@@ -120,9 +116,11 @@ class MicrophoneControl:
             self.recording_silence += 1
 
         if self.recording_silence >= self.recording_stop_frames:
+            self.logger.info("[MIC] Recording finished, entering PROCESSING mode!")
+
             self.state = MicrophoneState.PROCESSING
 
-            self.logger.info("[MIC] Recording finished, entering PROCESSING mode!")
+            self.recorder.pause() # stop recording immediately
 
             audio = np.concatenate(
                 self.recording_frames
@@ -149,9 +147,7 @@ class MicrophoneControl:
                 (Event.MIC_PROCESSING, None)
             )
 
-            # self.state = MicrophoneState.LISTENING
-
-            # self.logger.info("[MIC] Entering LISTENING mode!")
+            return
 
     def finish_interaction(self):
         self.logger.info("[MIC] Interacton finished")
@@ -163,15 +159,15 @@ class MicrophoneControl:
         self.recording_silence = 0
 
         self.wakeword.reset()
-
-        self.interaction_active = False
+        
+        self.recorder.resume() # restart recording
 
         self.state = MicrophoneState.LISTENING
 
         self.wakeword.recording = False
 
         while not self.recorder.queue.empty():
-            self.recorder.queue.get_nowair()
+            self.recorder.queue.get_nowait()
 
         self.logger.info("[MIC] Entering LISTENING mode!")
 
