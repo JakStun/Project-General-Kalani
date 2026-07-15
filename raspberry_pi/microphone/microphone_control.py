@@ -55,122 +55,45 @@ class MicrophoneControl:
 
         while True:
 
-            frame, overflow = await self.recorder.read_frame()
-            
+            await self.wait_for_wakeword()
+
+            audio = await self.record_interaction()
+
+            await self.queue.put(audio)
+
+    async def wait_for_wakeword(self):
+        while True:
+            frame = await self.recorder.read_frame()
+
             self.buffer.push(frame)
 
-            if self.state == MicrophoneState.LISTENING:
-                await self._handle_listening(frame)
+            if not self.vad.is_speech(frame):
+                continue
 
-            elif self.state == MicrophoneState.RECORDING:
-                await self._handle_recording(frame)
+            score = self.wakeword.process(frame)
 
-        
-    async def _handle_listening(self, frame):
-        if self.state != MicrophoneState.LISTENING:
-            return
-           
-        is_speech = self.vad.is_speech(frame)
-        
-        if not is_speech:
-            return
-        
-        score = self.wakeword.process(frame)
+            if score >= self.wakeword.threshold:
+                return
+            
+    async def record_interaction(self):
+        audio = self.buffer.get_audio()
 
-        if score < self.wakeword.threshold:
-            return
-        
+        silence = 0
 
-        self.state = MicrophoneState.RECORDING
+        while True:
+            frame = await self.recorder.read_frame()
 
-        self.recording_frames = [
-            self.buffer.get_audio()
-        ]    
+            audio.append(frame)
 
-        self.recording_silence = 0
+            if self.vad.is_speech(frame):
+                silence = 0
+            else:
+                silence += 1
 
-        self.logger.info("[MIC] Wakeword detected, entering RECORDING mode!")
+            if silence >= 40:
+                break
 
-
-        if is_speech and not self.speaking:
-            self.speech_frames += 1
-            self.silence_frames = 0
-        elif not is_speech and self.speaking:
-            self.silence_frames += 1
-            self.speech_frames = 0
-
-        if not self.speaking and self.speech_frames >= self.start_threshold:
-            self.speaking = True
-            self.logger.info("[MIC] Speech started")
-        elif self.speaking and self.silence_frames >= self.stop_threshold:
-            self.speaking = False
-            self.logger.info("[MIC] Speech stopped")
-
-    async def _handle_recording(self, frame):
-        
-        self.recording_frames.append(frame.copy())
-
-        if self.vad.is_speech(frame):
-            self.recording_silence = 0
-        else:
-            self.recording_silence += 1
-
-        if self.recording_silence >= self.recording_stop_frames:
-            self.logger.info("[MIC] Recording finished, entering PROCESSING mode!")
-
-            self.state = MicrophoneState.PROCESSING
-
-            self.recorder.pause() # stop recording immediately
-
-            audio = np.concatenate(
-                self.recording_frames
-            )
-
-            filename = datetime.now().strftime("recordings/recording_%Y%m%d_%H%M%S.wav")
-
-            with wave.open(filename, "wb") as wav:
-                wav.setnchannels(1)
-                wav.setsampwidth(2)
-                wav.setframerate(48000)
-
-                wav.writeframes(audio.tobytes())
-
-            self.ignore_wakeword_frames = 20
-
-            self.recording_frames.clear()
-
-            self.buffer.clear()
-
-            self.wakeword.reset()
-
-            await self.event_queue.put(
-                (Event.MIC_PROCESSING, None)
-            )
-
-            return
-
-    def finish_interaction(self):
-        self.logger.info("[MIC] Interacton finished")
-
-        self.buffer.clear()
-
-        self.recording_frames.clear()
-
-        self.recording_silence = 0
-
-        self.wakeword.reset()
-        
-        self.recorder.resume() # restart recording
-
-        self.state = MicrophoneState.LISTENING
-
-        self.wakeword.recording = False
-
-        while not self.recorder.queue.empty():
-            self.recorder.queue.get_nowait()
-
-        self.logger.info("[MIC] Entering LISTENING mode!")
-
+        return concatenate(auido)
 
                
 if __name__ == "__main__":
