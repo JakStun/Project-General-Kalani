@@ -3,7 +3,11 @@
 import asyncio
 import logging
 import logging.config
+import wave
 import yaml
+
+from datetime import datetime
+from pathlib import Path
 
 from events import Event
 from leds import LEDsControl
@@ -11,28 +15,22 @@ from microphone import MicrophoneControl
 from radar import RadarControl
 from servos import ServoControlPCA9685
 
-from pathlib import Path
 
-# --> Loading config file / Config setup <-- #
 LOG_CONFIG_PATH = Path(__file__).parent / "logger_config.yml"
 
 with open(LOG_CONFIG_PATH, "r") as f:
     config = yaml.safe_load(f)
     logging.config.dictConfig(config)
 
-async def main() -> None:
-    cerebrum = Cerebrum()
 
+async def main():
+    cerebrum = Cerebrum()
     await cerebrum.run()
 
-class Cerebrum:
-    '''
-    Center of all thoughts and source of strategic truth
-        -> hears out every request
-        -> obeys everything
-    '''
 
-    def __init__(self) -> None:
+class Cerebrum:
+
+    def __init__(self):
         self.logger = logging.getLogger("main")
 
         self.event_queue = asyncio.Queue()
@@ -40,76 +38,91 @@ class Cerebrum:
         self.radar = RadarControl(self.event_queue)
         self.leds = LEDsControl()
         self.servos = ServoControlPCA9685()
-        self.microphone = MicrophoneControl(self.event_queue)
+
+        self.microphone = MicrophoneControl()
 
         self.awake = False
 
+    async def startup(self):
 
-    async def startup(self) -> None:
         await self.servos.calibrate()
 
         asyncio.create_task(
             self.radar.run()
         )
 
-        asyncio.create_task(
-            self.microphone.run()
-        )
-
         self.logger.info("[CEREBRUM] Startup complete")
 
-    async def run(self) -> None:
+    async def run(self):
+
         await self.startup()
 
-        await self.event_loop()
+        await asyncio.gather(
+            self.event_loop(),
+            self.microphone_loop(),
+        )
 
-    async def event_loop(self) -> None:
+    async def microphone_loop(self):
+
         while True:
+
+            audio = await self.microphone.wait_for_interaction()
+
+            filename = datetime.now().strftime(
+                "recordings/recording_%Y%m%d_%H%M%S.wav"
+            )
+
+            with wave.open(filename, "wb") as wav:
+                wav.setnchannels(1)
+                wav.setsampwidth(2)
+                wav.setframerate(48000)
+                wav.writeframes(audio.tobytes())
+
+            self.logger.info("[CEREBRUM] Simulating processing")
+
+            await asyncio.sleep(3)
+
+    async def event_loop(self):
+
+        while True:
+
             event, payload = await self.event_queue.get()
 
             match event:
+
                 case Event.RADAR_DETECTED:
                     await self.wake_up()
 
                 case Event.RADAR_LOST:
                     await self.sleep()
 
-                case Event.MIC_PROCESSING:
-                    self.logger.info("[CEREBRUM] Simulationg processing")
-
-                    await asyncio.sleep(3)
-
-                    self.microphone.finish_interaction()
-
-                    await asyncio.sleep(0.05)
-
             self.event_queue.task_done()
 
+    async def wake_up(self):
 
-    async def wake_up(self) -> None:
-
-        if self.awake: # no idea how else...
+        if self.awake:
             return
-        
+
         self.awake = True
 
         self.logger.info("[CEREBRUM] WAKING UP FROM SLUMBER")
 
         await asyncio.gather(
             self.leds.wake_animation(),
-            self.servos.wake_animation()
+            self.servos.wake_animation(),
         )
 
         await self.leds.start_active()
 
-    async def sleep(self) -> None:
+    async def sleep(self):
 
-        if not self.awake: # no idea how else...
+        if not self.awake:
             return
-        
+
         self.awake = False
 
         self.logger.info("[CEREBRUM] GOING BACK TO SLUMBER MODE")
+
         await self.leds.stop_active()
 
         await asyncio.gather(
