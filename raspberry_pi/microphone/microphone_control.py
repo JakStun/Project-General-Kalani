@@ -1,3 +1,5 @@
+import asyncio
+
 import numpy as np
 
 from logging import getLogger
@@ -27,14 +29,24 @@ class MicrophoneControl:
             sample_rate=self.recorder.sample_rate
         )
 
-        self.wakeword = WakeWordDetector()
+        self.wakeword = WakeWordDetector(debounce=1.0)
 
         self.recording_stop_frames = 40
+        self.listening_enabled = True
+
+    def pause_listening(self):
+        self.listening_enabled = False
+
+    def resume_listening(self):
+        self.listening_enabled = True
 
     async def wait_for_interaction(self):
         self.logger.info("[MIC] Listening...")
 
         while True:
+            if not self.listening_enabled:
+                await asyncio.sleep(0.1)
+                continue
 
             await self.wait_for_wakeword()
 
@@ -44,12 +56,17 @@ class MicrophoneControl:
 
             self.logger.info("[MIC] Recording finished")
 
+            if audio.size == 0:
+                self.wakeword.release()
+                continue
+
+            self.wakeword.release()
+            return audio
+
     async def wait_for_wakeword(self):
         self.buffer.clear()
-        self.wakeword.reset()
 
         while True:
-
             frame, overflow = await self.recorder.read_frame()
 
             self.buffer.push(frame)
@@ -60,6 +77,7 @@ class MicrophoneControl:
             score = self.wakeword.process(frame)
 
             if score >= self.wakeword.threshold:
+                self.logger.info("[MIC] Wakeword score %.3f", score)
                 return
 
     async def record_interaction(self):

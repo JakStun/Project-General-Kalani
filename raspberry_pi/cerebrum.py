@@ -3,10 +3,10 @@
 import asyncio
 import logging
 import logging.config
+import time
 import wave
 import yaml
 
-from datetime import datetime
 from pathlib import Path
 
 from events import Event
@@ -15,6 +15,7 @@ from microphone import MicrophoneControl
 from radar import RadarControl
 from servos import ServoControlPCA9685
 
+from speech_client import SpeechClient
 
 LOG_CONFIG_PATH = Path(__file__).parent / "logger_config.yml"
 
@@ -22,6 +23,10 @@ with open(LOG_CONFIG_PATH, "r") as f:
     config = yaml.safe_load(f)
     logging.config.dictConfig(config)
 
+RECORDING_DIR = Path("recordings")
+RECORDING_DIR.mkdir(exist_ok=True)
+
+CURRENT_AUDIO = RECORDING_DIR / "current.wav"
 
 async def main():
     cerebrum = Cerebrum()
@@ -41,7 +46,12 @@ class Cerebrum:
 
         self.microphone = MicrophoneControl()
 
+        self.speech_client = SpeechClient()
+
         self.awake = False
+
+        self.last_request_time = 0
+        self.request_cooldown = 30.0
 
     async def startup(self):
 
@@ -68,17 +78,31 @@ class Cerebrum:
 
             audio = await self.microphone.wait_for_interaction()
 
-            filename = datetime.now().strftime(
-                "recordings/recording_%Y%m%d_%H%M%S.wav"
-            )
+            duration = len(audio) / 48000
+            self.logger.info(f"[CEREBRUMs] Recording length: {duration:.2f}s")
 
-            with wave.open(filename, "wb") as wav:
-                wav.setnchannels(1)
-                wav.setsampwidth(2)
-                wav.setframerate(48000)
-                wav.writeframes(audio.tobytes())
+            if duration < 2.0:
+                self.logger.info(
+                    f"[CEREBRUM] Recording too short ({duration:.2f}s), ignoring."
+                )
+                continue
 
-            self.logger.info("[CEREBRUM] Simulating processing")
+            now = time.monotonic()
+
+            if now - self.last_request_time < self.request_cooldown:
+                self.logger.info("[CEREBRUM] Request ignored (cooldown active)")
+                continue
+
+            self.last_request_time = now
+
+            self.microphone.pause_listening()
+            try:
+                path = self.save_audio(audio)
+                response = await self.speech_client.process(path)
+                path.unlink(missing_ok=True)
+                self.logger.info(f"[CEREBRUM] Response: {response}")
+            finally:
+                self.microphone.resume_listening()
 
             await asyncio.sleep(3)
 
@@ -129,6 +153,16 @@ class Cerebrum:
             self.leds.sleep_animation(),
             self.servos.sleep_animation(),
         )
+
+    def save_audio(self, audio) -> Path:
+        with wave.open(str(CURRENT_AUDIO), "wb") as wav:
+            wav.setnchannels(1)
+            wav.setsampwidth(2)
+            wav.setframerate(48000)
+
+            wav.writeframes(audio.tobytes())
+
+        return CURRENT_AUDIO
 
 
 if __name__ == "__main__":

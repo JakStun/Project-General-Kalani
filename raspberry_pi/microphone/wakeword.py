@@ -4,14 +4,24 @@ import time
 from logging import getLogger
 from openwakeword.model import Model
 
+
 class WakeWordDetector:
-    def __init__(self, wakeword: str = "hey_jarvis", threshold: float = 0.75) -> None:
+    def __init__(
+        self,
+        wakeword: str = "hey_jarvis",
+        threshold: float = 0.75,
+        debounce: float = 1.0,
+        model=None,
+    ) -> None:
         self.logger = getLogger("main")
 
         self.wakeword = wakeword
         self.threshold = threshold
+        self.debounce = debounce
 
-        self.model = Model()
+        self.model = model if model is not None else Model()
+        self._last_detection_time = 0.0
+        self._is_blocked = False
 
     def process(self, frame: np.ndarray) -> float:
         """
@@ -22,12 +32,10 @@ class WakeWordDetector:
         float -> confidence score for the wakeword
         """
 
-
         t0 = time.perf_counter()
         frame16 = frame[::3]
-        
-        predictions = self.model.predict(frame16)
 
+        predictions = self.model.predict(frame16)
         score = predictions[self.wakeword]
 
         dt = (time.perf_counter() - t0) * 1000
@@ -35,8 +43,24 @@ class WakeWordDetector:
         # print(f"[WAKEWORD] Score: {score:.3f} (took {dt:.1f} ms)")
         # print(f"[WAKEWORD] {time.monotonic():.3f} detected -> {score:.3f}")
 
+        if self._is_blocked:
+            return 0.0
+
+        if score < self.threshold:
+            return 0.0
+
+        now = time.monotonic()
+        if self._last_detection_time > 0.0 and (now - self._last_detection_time) < self.debounce:
+            return 0.0
+
+        self._last_detection_time = now
+        self._is_blocked = True
         return float(score)
 
-
     def reset(self):
+        self._last_detection_time = 0.0
+        self._is_blocked = False
         self.model.reset()
+
+    def release(self):
+        self._is_blocked = False
