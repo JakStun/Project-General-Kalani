@@ -98,9 +98,9 @@ class Cerebrum:
             self.microphone.pause_listening()
             try:
                 path = self.save_audio(audio)
-                response = await self.speech_client.process(path)
+                response_path = await self.speech_client.process(path)
                 path.unlink(missing_ok=True)
-                self.logger.info(f"[CEREBRUM] Response: {response}")
+                self.logger.info(f"[CEREBRUM] Response audio: {response_path}")
             finally:
                 self.microphone.resume_listening()
 
