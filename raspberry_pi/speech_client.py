@@ -1,10 +1,9 @@
-import asyncio
-import io
-import json
-import urllib.request
+import httpx
 from pathlib import Path
 from typing import Optional
 
+import sounddevice as sd
+import soundfile as sf
 
 class SpeechClient:
     def __init__(
@@ -15,42 +14,50 @@ class SpeechClient:
         self.server_url = server_url
         self.robot_id = robot_id
 
-    async def process(self, audio_path: Path) -> Optional[Path]:
-        print(f"Uploading {audio_path}")
+        self.client = httpx.AsyncClient(
+            timeout=1200
+        )
 
-        data = audio_path.read_bytes()
+    async def process(self, filename: str = "current.wav") -> Optional[Path]:
+        print(f"Uploading {filename}")
 
-        def _request() -> Optional[Path]:
-            boundary = "----RaspberryPiBoundary"
-            body = []
-            body.append(f"--{boundary}\r\n".encode())
-            body.append(b'Content-Disposition: form-data; name="x_robot_id"\r\n\r\n')
-            body.append(f"{self.robot_id}\r\n".encode())
-            body.append(f"--{boundary}\r\n".encode())
-            body.append(
-                b'Content-Disposition: form-data; name="audio_file"; filename="input.wav"\r\n'
-            )
-            body.append(b"Content-Type: audio/wav\r\n\r\n")
-            body.append(data)
-            body.append(f"\r\n--{boundary}--\r\n".encode())
+        path = Path(filename)
 
-            payload = b"".join(body)
-            req = urllib.request.Request(
+        with path.open("rb") as audio:
+            response = await self.client.post(
                 self.server_url,
-                data=payload,
-                headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
-                method="POST",
+                headers={
+                    "X-Robot-ID": self.robot_id
+                },
+                files={
+                    "audio_file": (
+                        path.name,
+                        audio,
+                        "audio/wav",
+                    )
+                },
             )
 
-            with urllib.request.urlopen(req, timeout=60) as response:
-                content_type = response.headers.get("Content-Type", "audio/wav")
-                if "audio/wav" not in content_type:
-                    raise RuntimeError(f"Unexpected content type: {content_type}")
+        response.raise_for_status()
 
-                response_bytes = response.read()
+        try:
+            payload = response.json()
+            return payload
+        except (UnicodeDecodeError, ValueError):
+            output_path = path.with_suffix(".response.wav")
+            output_path.write_bytes(response.content)
+            return output_path
+    
 
-                output_path = audio_path.with_suffix(".response.wav")
-                output_path.write_bytes(response_bytes)
-                return output_path
+    async def say_response(self):
+        filename = r"/home/pi/Code/Github/Project-General-Kalani/raspberry_pi/recordings/current.response.wav"
 
-        return await asyncio.to_thread(_request)
+        data,sample_rate = sf.read(filename, dtype="float32")
+
+        sd.play(data, sample_rate)
+
+        sd.wait()
+
+
+    async def close(self):
+        await self.client.aclose()

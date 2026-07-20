@@ -8,7 +8,7 @@ import sounddevice as sd
 class Recorder:
     FRAME_MS = 30
 
-    def __init__(self, device=2):
+    def __init__(self, device=1):
         self.device = device
 
         self.sample_rate = 48000

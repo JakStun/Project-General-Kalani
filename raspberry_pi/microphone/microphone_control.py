@@ -29,7 +29,7 @@ class MicrophoneControl:
             sample_rate=self.recorder.sample_rate
         )
 
-        self.wakeword = WakeWordDetector(debounce=1.0)
+        self.wakeword = WakeWordDetector(debounce=1.5)
 
         self.recording_stop_frames = 40
         self.listening_enabled = True
@@ -48,19 +48,22 @@ class MicrophoneControl:
                 await asyncio.sleep(0.1)
                 continue
 
+            self.wakeword.reset()
+
             await self.wait_for_wakeword()
 
             self.logger.info("[MIC] Wakeword detected")
 
-            audio = await self.record_interaction()
+            try:
+                audio = await self.record_interaction()
+            finally:
+                self.wakeword.release()
 
             self.logger.info("[MIC] Recording finished")
 
             if audio.size == 0:
-                self.wakeword.release()
                 continue
 
-            self.wakeword.release()
             return audio
 
     async def wait_for_wakeword(self):

@@ -46,7 +46,10 @@ class Cerebrum:
 
         self.microphone = MicrophoneControl()
 
-        self.speech_client = SpeechClient()
+        self.speech_client = SpeechClient(
+            server_url="http://192.168.1.35:8000/api/v1/audio/post",
+            robot_id="jdYw4hR5fCMLgv-Y4NssP"
+        )
 
         self.awake = False
 
@@ -98,9 +101,11 @@ class Cerebrum:
             self.microphone.pause_listening()
             try:
                 path = self.save_audio(audio)
-                response_path = await self.speech_client.process(path)
-                path.unlink(missing_ok=True)
-                self.logger.info(f"[CEREBRUM] Response audio: {response_path}")
+                path = "recordings/current.wav"
+                result = await self.speech_client.process(path)
+                # path.unlink(missing_ok=True)
+                self.logger.info(f"[CEREBRUM] Response audio: {result}")
+                await self.speech_client.say_response()
             finally:
                 self.microphone.resume_listening()
 
