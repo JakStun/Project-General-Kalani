@@ -23,7 +23,7 @@ class AudioService:
 
         self.stt = SpeechToText()
         self.tts = PiperService()
-        self.llm = ResponseGenerator()
+        self.llm = None
         self.logger = logging.getLogger("main")
 
     async def process_audio(self, robot_id: str, audio_file: UploadFile):
@@ -73,6 +73,8 @@ class AudioService:
         return user_text
     
     async def _generate_response(self, user_text: str):
+        if self.llm is None:
+            self.llm = ResponseGenerator()
         response_text = await asyncio.to_thread(self.llm.generate_response, user_text)
 
         return response_text

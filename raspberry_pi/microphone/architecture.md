@@ -18,7 +18,7 @@ Because of my beginner skills I needed to mostly rely on AI...
 Nevertheless I read the docs to each library I used in MIC architecture
 
 docs:
-- 
+- https://python-sounddevice.readthedocs.io/en/0.5.3
 
 
 0 vc4-hdmi-0: MAI PCM i2s-hifi-0 (hw:0,0), ALSA (0 in, 2 out)
