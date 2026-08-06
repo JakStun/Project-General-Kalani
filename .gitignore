@@ -216,7 +216,7 @@ __marimo__/
 *logs
 
 # updates
-updates/
+updates/Videos/V1-LED-Night-Test-1.mp4
 
 # Models
 V1/server/model/*.onnx
