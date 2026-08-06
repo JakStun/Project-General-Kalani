@@ -220,3 +220,4 @@ updates/
 
 # Models
 V1/server/model/*.onnx
+V1/server/model/*.onnx.json
