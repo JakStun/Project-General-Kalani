@@ -221,3 +221,6 @@ updates/Videos/V1-LED-Night-Test-1.mp4
 # Models
 V1/server/model/*.onnx
 V1/server/model/*.onnx.json
+
+# FreeCAD
+V2/FreeCAD/Head/Tests
