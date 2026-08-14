@@ -1,7 +1,7 @@
-from .tts import TextToSpeech
+# from .tts import TextToSpeech
 from .piper import PiperService
 
 __all__ = [
-    "TextToSpeech",
+    # "TextToSpeech",
     "PiperService"
 ]

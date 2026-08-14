@@ -33,7 +33,7 @@ class ResponseGenerator:
             self.model = AutoModelForCausalLM.from_pretrained(
                 MODEL_NAME,
                 dtype=dtype,
-            ).to(device)
+            ).to(device) # type: ignore
 
             self.logger.info(f"Device: {self.model.device}")
 
@@ -78,7 +78,7 @@ class ResponseGenerator:
             {"role": "user", "content": user_input},
         ]
 
-        prompt = self.tokenizer.apply_chat_template(
+        prompt = self.tokenizer.apply_chat_template( # type: ignore
             messages,
             tokenize=False,
             add_generation_prompt=True,
@@ -87,18 +87,18 @@ class ResponseGenerator:
         inputs = self.tokenizer(
             prompt,
             return_tensors="pt"
-        ).to(self.model.device)
+        ).to(self.model.device) # type: ignore
 
         # inputs = self.tokenizer(prompt, return_tensors="pt").to(self.model.device)
 
         start = time.time()
 
-        outputs = self.model.generate(
+        outputs = self.model.generate( # type: ignore
             **inputs,
             max_new_tokens=20,
             do_sample=False,
-            pad_token_id=self.tokenizer.eos_token_id,
-            eos_token_id=self.tokenizer.eos_token_id,
+            pad_token_id=self.tokenizer.eos_token_id, # type: ignore
+            eos_token_id=self.tokenizer.eos_token_id, # type: ignore
         )
 
         elapsed = time.time() - start
@@ -119,7 +119,7 @@ class ResponseGenerator:
 
         input_length = inputs["input_ids"].shape[1]
 
-        response = self.tokenizer.decode(
+        response = self.tokenizer.decode( # type: ignore
             outputs[0][input_length:],
             skip_special_tokens=True
         )

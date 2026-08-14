@@ -5,7 +5,7 @@ REF_TEXT: str = """
     the citizens will loose their courage.
 """
 
-VERSION: dict[str, str] = {
+VERSION: dict[str, str | dict[str, float]] = {
     "name": "battle_worn_general",
     "description": "Battle-worn authority - experienced but damaged",
     "params": {
