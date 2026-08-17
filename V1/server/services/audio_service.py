@@ -4,7 +4,7 @@ import asyncio
 import torch
 
 from fastapi import UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import Response
 
 from stt import SpeechToText
 from tts import PiperService
@@ -14,7 +14,7 @@ from .config import TEMP_DIR
 
 torch.backends.cuda.enable_flash_sdp(True)
 torch.backends.cuda.enable_mem_efficient_sdp(True)
-torch.backends.cuda.enable_math_sdp(False)
+torch.backends.cuda.enable_math_sdp(True)
 
 class AudioService:
     def __init__(self):
@@ -32,7 +32,7 @@ class AudioService:
         '''
         start_total = time.time()
         try:
-            file_path = self.temp_dir / audio_file.filename
+            file_path = f"{self.temp_dir}/{audio_file.filename}"
 
             with open(file_path, "wb") as f:
                 content = await audio_file.read()
@@ -46,20 +46,28 @@ class AudioService:
 
             # II. Generate response from LLM:
             start_llm = time.time()
-            response_text = await self._generate_response(user_text)
+            response_text = await self._generate_response(str(user_text))
             llm_time = time.time() - start_llm
             self.logger.info(f"LLM took {llm_time:.2f}s")
 
             # III. Create audio response:
             start_tts = time.time()
-            await self._create_audio_response(robot_id, response_text)
+            audio_data = await self._create_audio_response(
+                response_text
+            )
             tts_time = time.time() - start_tts
             self.logger.info(f"TTS took {tts_time:.2f}s")
 
             total_time = time.time() - start_total
             self.logger.info(f"Total processing took {total_time:.2f}s")
 
-            return FileResponse(f'temp/{robot_id}.wav', media_type="audio/wav", filename=f'{robot_id}.wav')
+            return Response(
+                content=audio_data,
+                media_type="audio/wav",
+                headers={
+                    "Content-Disposition": f'attachment; filename="{robot_id}.wav"'
+                },
+            )
 
         except Exception as e:
             return {"message": f"Error occurred while processing audio: {str(e)}"}
@@ -79,12 +87,9 @@ class AudioService:
 
         return response_text
     
-    async def _create_audio_response(self, robot_id: str, response_text: str):
-        output_file = (
-            self.temp_dir / f"{robot_id}.wav"
-        )
+    async def _create_audio_response(
+        self,
+        response_text: str,
+    ) -> bytes:
 
-        await self.tts.generate_async(
-            response_text,
-            str(output_file)
-        )
+        return await self.tts.generate_async(response_text)
